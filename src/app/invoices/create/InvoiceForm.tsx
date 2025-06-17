@@ -5,38 +5,101 @@ import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
 import { Button } from "../../../components/ui/button";
 import { createInvoiceAction } from "./create-invoice-action";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+const invoiceSchema = z.object({
+  amount: z
+    .number({ invalid_type_error: "Amount must be a number" })
+    .min(0.01, "Amount must be at least 0.01"),
+  description: z.string().min(1, "Description is required"),
+  cardNumber: z
+    .string()
+    .regex(/^\d{16}$/, "Card number must be 16 digits"),
+  expiryDate: z
+    .string()
+    .regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Expiry date must be in MM/YY format"),
+  cvv: z
+    .string()
+    .regex(/^\d{3,4}$/, "CVV must be 3 or 4 digits"),
+  cardholderName: z.string().min(1, "Cardholder name is required"),
+});
+
+type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
 export function InvoiceForm() {
+
+   const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<InvoiceFormValues>({
+    resolver: zodResolver(invoiceSchema),
+    defaultValues: {
+      amount: 0.01,
+      description: "This is a test invoice",
+      cardNumber: "1111111111111111",
+      expiryDate: "12/25",
+      cvv: "123",
+      cardholderName: "Name Surname",
+    },
+  });
+
+  async function onSubmit(data: InvoiceFormValues) {
+    try {
+      await createInvoiceAction({
+        amount: data.amount,
+        description: data.description,
+        cardNumber: data.cardNumber,
+        expiryMonth: parseInt(data.expiryDate.split('/')[0], 10),
+        expiryYear: parseInt(data.expiryDate.split('/')[1], 10),
+        cvv: data.cvv,
+        cardholderName: data.cardholderName,
+      });
+      alert("Invoice created successfully!");
+      reset();
+    } catch (error) {
+      alert("An unexpected error occurred. Please try again.");
+      console.error(error);
+    }
+  }
+
   return (
-    <form action={createInvoiceAction}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
-          <div className="space-y-2">
+          <div >
             <label htmlFor="amount" className="text-gray-300 block">
               Value
             </label>
             <Input
               id="amount"
-              name="amount"
               type="number"
               step={0.01}
               min={0}
-              defaultValue={0.01}
               placeholder="0.00"
               className="bg-[#2a3749] border-gray-700 text-white placeholder-gray-400"
+              {...register("amount", { valueAsNumber: true })}
             />
+            {errors.amount && (
+              <span className="text-red-400 text-sm">{errors.amount.message}</span>
+            )}
           </div>
 
-          <div className="space-y-2">
+          <div >
             <label htmlFor="description" className="text-gray-300 block">
               Description
             </label>
             <Textarea
               id="description"
-              name="description"
               placeholder="Enter a description for the invoice"
-              defaultValue={"This is a test invoice"}
+              {...register("description")}
             />
+            {errors.description && (
+              <span className="text-red-400 text-sm">{errors.description.message}</span>
+            )}
           </div>
         </div>
 
@@ -46,61 +109,69 @@ export function InvoiceForm() {
           </h2>
 
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div >
               <label htmlFor="cardNumber" className="text-gray-300 block">
                 Number
               </label>
               <div className="relative">
                 <Input
                   id="cardNumber"
-                  name="cardNumber"
                   placeholder="0000000000000000"
-                  defaultValue={"1111111111111111"}
                   maxLength={16}
                   className="bg-[#2a3749] border-gray-700 pl-10 text-white placeholder-gray-400"
+                  {...register("cardNumber")}
                 />
                 <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               </div>
+              {errors.cardNumber && (
+                <span className="text-red-400 text-sm">{errors.cardNumber.message}</span>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div >
                 <label htmlFor="expiryDate" className="text-gray-300 block">
                   Expiry Date
                 </label>
                 <Input
                   id="expiryDate"
-                  name="expiryDate"
                   placeholder="MM/AA"
-                  defaultValue={"12/25"}
                   className="bg-[#2a3749] border-gray-700 text-white placeholder-gray-400"
+                  {...register("expiryDate")}
                 />
+                {errors.expiryDate && (
+                  <span className="text-red-400 text-sm">{errors.expiryDate.message}</span>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div >
                 <label htmlFor="cvv" className="text-gray-300 block">
                   CVV
                 </label>
                 <Input
                   id="cvv"
-                  name="cvv"
                   placeholder="123"
-                    defaultValue={"123"}
                   className="bg-[#2a3749] border-gray-700 text-white placeholder-gray-400"
+                  {...register("cvv")}
                 />
+                {errors.cvv && (
+                  <span className="text-red-400 text-sm">{errors.cvv.message}</span>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div >
               <label htmlFor="cardholderName" className="text-gray-300 block">
                 Cardholder Name
               </label>
               <Input
                 id="cardholderName"
-                name="cardholderName"
-                defaultValue={"Name Surname"}
                 className="bg-[#2a3749] border-gray-700 text-white placeholder-gray-400"
+                {...register("cardholderName")}
               />
+              {errors.cardholderName && (
+                <span className="text-red-400 text-sm">{errors.cardholderName.message}</span>
+              )}
             </div>
           </div>
         </div>
