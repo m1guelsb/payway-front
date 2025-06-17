@@ -4,19 +4,19 @@ import { revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export async function createInvoiceAction(formData: FormData) {
+type InvoiceFormData = {
+  amount: number;
+  description: string;
+  cardNumber: string;
+  expiryMonth: number;
+  expiryYear: number;
+  cvv: string;
+  cardholderName: string;
+}
+
+export async function createInvoiceAction(formData: InvoiceFormData) {
   const cookiesStore = await cookies();
   const apiKey = cookiesStore.get("apiKey")?.value;
-
-  const amount = formData.get("amount")?.toString().replace(",", ".");
-  const description = formData.get("description");
-  const cardNumber = formData.get("cardNumber");
-  const [expiryMonth, expiryYear] = formData
-    .get("expiryDate")!
-    .toString()
-    .split("/");
-  const cvv = formData.get("cvv");
-  const cardholderName = formData.get("cardholderName");
 
   const response = await fetch("http://app:8080/invoice", {
     method: "POST",
@@ -25,13 +25,13 @@ export async function createInvoiceAction(formData: FormData) {
       "X-API-Key": apiKey as string,
     },
     body: JSON.stringify({
-      amount: parseFloat(amount as string),
-      description,
-      card_number: cardNumber,
-      expiry_month: parseInt(expiryMonth as string),
-      expiry_year: parseInt(expiryYear as string),
-      cvv,
-      cardholder_name: cardholderName,
+      amount: formData.amount,
+      description: formData.description,
+      card_number: formData.cardNumber,
+      expiry_month: formData.expiryMonth,
+      expiry_year: formData.expiryYear,
+      cvv: formData.cvv,
+      cardholder_name: formData.cardholderName,
       payment_type: "credit_card",
     }),
   });
